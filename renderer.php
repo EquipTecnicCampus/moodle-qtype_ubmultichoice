@@ -1,4 +1,5 @@
 <?php
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -22,10 +23,7 @@
  * @copyright  2009 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-
 defined('MOODLE_INTERNAL') || die();
-
 
 /**
  * Base class for generating the bits of output common to multiple choice
@@ -35,6 +33,7 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_feedback_renderer {
+
     protected abstract function get_input_type();
 
     protected abstract function get_input_name(question_attempt $qa, $value);
@@ -52,15 +51,16 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
 
     protected abstract function prompt();
 
-    public function formulation_and_controls(question_attempt $qa,
-            question_display_options $options) {
+    public function formulation_and_controls(question_attempt $qa, question_display_options $options) {
 
-        global $PAGE,$CFG;
-        
+        global $PAGE, $CFG;
+
         $question = $qa->get_question();
         $response = $question->get_response($qa);
 
-        $inputname = $qa->get_qt_field_name('answer');        
+
+
+        $inputname = $qa->get_qt_field_name('answer');
         $inputattributes = array(
             'type' => $this->get_input_type(),
             'name' => $inputname,
@@ -69,73 +69,82 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
             'type' => 'radio',
             'name' => $inputname,
             'value' => '-1',
-            'id' => $inputname.'_hiden', 
+            'id' => $inputname . '_hiden',
         );
         $buttonclearattributes = array(
-            'type'=>'button', 
-            'name'=>$inputname,
-            'id'=>$inputname,
-            'onclick' =>"blankresponse('$inputname')",
+            'type' => 'button',
+            'name' => $inputname,
+            'id' => $inputname,
+            'onclick' => "blankresponse('$inputname')",
         );
-        
+
         if ($options->readonly) {
             $inputattributes['disabled'] = 'disabled';
             $buttonclearattributes['disabled'] = 'disabled';
         }
 
-        
-        
         $radiobuttons = array();
         $feedbackimg = array();
         $feedback = array();
         $classes = array();
-        
-        
-        
+
         foreach ($question->get_order($qa) as $value => $ansid) {
             $ans = $question->answers[$ansid];
             $inputattributes['name'] = $this->get_input_name($qa, $value);
             $inputattributes['value'] = $this->get_input_value($value);
             $inputattributes['id'] = $this->get_input_id($qa, $value);
-            $isselected = $question->is_choice_selected($response, $value); 
-           
+
+            /*
+             * UB
+             * Modificació, controlem l'estat del radiobuttons correctament.
+             * David Trelles - 27/01/2014
+             */
+            if ($qa->get_num_steps() >= 3) {
+                if ($qa->get_step($qa->get_num_steps() - 1)->get_state() != 'gaveup' && $qa->get_step($qa->get_num_steps() - 1)->get_state() != 'todo') {
+                    $isselected = $question->is_choice_selected($response, $value);
+                } else {
+                    // Forcem a false perquè no ens pinti la penúltima seleccionada.
+                    $isselected = false;
+                }
+            } else {
+                $isselected = $question->is_choice_selected($response, $value);
+            }
+            /*
+             * Fi modificació
+             */
+
             if ($isselected) {
                 $inputattributes['checked'] = 'checked';
             } else {
                 unset($inputattributes['checked']);
             }
+
             $hidden = '';
-            
-            if (!$options->readonly && $this->get_input_type() == 'checkbox') {                
+            if (!$options->readonly && $this->get_input_type() == 'checkbox') {
                 $hidden = html_writer::empty_tag('input', array(
-                    'type' => 'hidden',
-                    'name' => $inputattributes['name'],
-                    'value' => 0,
-                ));
-            }           
-            
-            $radiobuttons[] = $hidden. html_writer::empty_tag('input', $inputattributes) .
-                    html_writer::tag('label',
-                        $this->number_in_style($value, $question->answernumbering) .
-                        $question->make_html_inline($question->format_text(
-                                $ans->answer, $ans->answerformat,
-                                $qa, 'question', 'answer', $ansid)),
-                    array('for' => $inputattributes['id']));
+                            'type' => 'hidden',
+                            'name' => $inputattributes['name'],
+                            'value' => 0,
+                        ));
+            }
+
+            $radiobuttons[] = $hidden . html_writer::empty_tag('input', $inputattributes) .
+                    html_writer::tag('label', $this->number_in_style($value, $question->answernumbering) .
+                            $question->make_html_inline($question->format_text(
+                                            $ans->answer, $ans->answerformat, $qa, 'question', 'answer', $ansid)), array('for' => $inputattributes['id']));
 
             // $options->suppresschoicefeedback is a hack specific to the
             // oumultiresponse question type. It would be good to refactor to
             // avoid refering to it here.
             if ($options->feedback && empty($options->suppresschoicefeedback) &&
                     $isselected && trim($ans->feedback)) {
-                $feedback[] = html_writer::tag('div',
-                        $question->make_html_inline($question->format_text(
-                                $ans->feedback, $ans->feedbackformat,
-                                $qa, 'question', 'answerfeedback', $ansid)),
-                        array('class' => 'specificfeedback'));
+                $feedback[] = html_writer::tag('div', $question->make_html_inline($question->format_text(
+                                                $ans->feedback, $ans->feedbackformat, $qa, 'question', 'answerfeedback', $ansid)), array('class' => 'specificfeedback'));
             } else {
                 $feedback[] = '';
             }
             $class = 'r' . ($value % 2);
+
             if ($options->correctness && $isselected) {
                 $feedbackimg[] = $this->feedback_image($this->is_right($ans));
                 $class .= ' ' . $this->feedback_class($this->is_right($ans));
@@ -146,48 +155,39 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
         }
 
         $result = '';
-        $result .= html_writer::tag('div', $question->format_questiontext($qa),
-                array('class' => 'qtext'));
+        $result .= html_writer::tag('div', $question->format_questiontext($qa), array('class' => 'qtext'));
 
         $result .= html_writer::start_tag('div', array('class' => 'ablock'));
+
         $result .= html_writer::tag('div', $this->prompt(), array('class' => 'prompt'));
 
         $result .= html_writer::start_tag('div', array('class' => 'answer'));
         foreach ($radiobuttons as $key => $radio) {
-            $result .= html_writer::tag('div', $radio . ' ' . $feedbackimg[$key] . $feedback[$key],
-                    array('class' => $classes[$key])) . "\n";
+            $result .= html_writer::tag('div', $radio . ' ' . $feedbackimg[$key] . $feedback[$key], array('class' => $classes[$key])) . "\n";
         }
-     
+
         /*
          * UB
          * Modificación, ponemos en blanco radiobuttons 
          * Javier Flaqué - 14/03/2013
-         */   
-        if($this->get_input_type()== 'radio'){
-            
-            $result .= html_writer::start_tag('div', array('style' => 'display:none'));   
-            $result .= html_writer::start_tag('input',$emptyattributes);
-            $result .= html_writer::end_tag('input');        
-            $result .= html_writer::end_tag('div');
+         */
+        if ($this->get_input_type() == 'radio') {
 
-            
-            $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/question/type/ubmultichoice/emptyRadio.js'));        
+            $PAGE->requires->js(new moodle_url($CFG->wwwroot . '/question/type/ubmultichoice/emptyRadio.js'));
             $result .= html_writer::end_tag('br');
-            $result .= html_writer::start_tag('button',$buttonclearattributes);        
+            $result .= html_writer::start_tag('button', $buttonclearattributes);
             $result .= get_string('noresponse', 'quiz');
             $result .= html_writer::end_tag('button');
         }
         /* Fin modificación */
-        
-        
+
+
         $result .= html_writer::end_tag('div'); // answer
 
         $result .= html_writer::end_tag('div'); // ablock
 
         if ($qa->get_state() == question_state::$invalid) {
-            $result .= html_writer::nonempty_tag('div',
-                    $question->get_validation_error($qa->get_last_qt_data()),
-                    array('class' => 'validationerror'));
+            $result .= html_writer::nonempty_tag('div', $question->get_validation_error($qa->get_last_qt_data()), array('class' => 'validationerror'));
         }
 
         return $result;
@@ -204,7 +204,7 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
      * @return string the number $num in the requested style.
      */
     protected function number_in_style($num, $style) {
-        switch($style) {
+        switch ($style) {
             case 'abc':
                 $number = chr(ord('a') + $num);
                 break;
@@ -231,8 +231,8 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
     public function specific_feedback(question_attempt $qa) {
         return $this->combined_feedback($qa);
     }
-}
 
+}
 
 /**
  * Subclass for generating the bits of output specific to multiple choice
@@ -242,6 +242,7 @@ abstract class qtype_ubmultichoice_renderer_base extends qtype_with_combined_fee
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_ubmultichoice_single_renderer extends qtype_ubmultichoice_renderer_base {
+
     protected function get_input_type() {
         return 'radio';
     }
@@ -272,14 +273,13 @@ class qtype_ubmultichoice_single_renderer extends qtype_ubmultichoice_renderer_b
         foreach ($question->answers as $ansid => $ans) {
             if (question_state::graded_state_for_fraction($ans->fraction) ==
                     question_state::$gradedright) {
-                return get_string('correctansweris', 'qtype_multichoice',
-                        $question->format_text($ans->answer, $ans->answerformat,
-                                $qa, 'question', 'answer', $ansid));
+                return get_string('correctansweris', 'qtype_multichoice', $question->format_text($ans->answer, $ans->answerformat, $qa, 'question', 'answer', $ansid));
             }
         }
 
         return '';
     }
+
 }
 
 /**
@@ -290,6 +290,7 @@ class qtype_ubmultichoice_single_renderer extends qtype_ubmultichoice_renderer_b
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_ubmultichoice_multi_renderer extends qtype_ubmultichoice_renderer_base {
+
     protected function get_input_type() {
         return 'checkbox';
     }
@@ -321,17 +322,16 @@ class qtype_ubmultichoice_multi_renderer extends qtype_ubmultichoice_renderer_ba
     public function correct_response(question_attempt $qa) {
         $question = $qa->get_question();
 
+
         $right = array();
         foreach ($question->answers as $ansid => $ans) {
             if ($ans->fraction > 0) {
-                $right[] = $question->format_text($ans->answer, $ans->answerformat,
-                        $qa, 'question', 'answer', $ansid);
+                $right[] = $question->format_text($ans->answer, $ans->answerformat, $qa, 'question', 'answer', $ansid);
             }
         }
 
         if (!empty($right)) {
-                return get_string('correctansweris', 'qtype_multichoice',
-                        implode(', ', $right));
+            return get_string('correctansweris', 'qtype_multichoice', implode(', ', $right));
         }
         return '';
     }
@@ -344,4 +344,5 @@ class qtype_ubmultichoice_multi_renderer extends qtype_ubmultichoice_renderer_ba
 
         return parent::num_parts_correct($qa);
     }
+
 }

@@ -103,6 +103,7 @@ abstract class qtype_ubmultichoice_base extends question_graded_automatically {
         } else if ($component == 'question' && $filearea == 'answerfeedback') {
             $answerid = reset($args); // itemid is answer id.
             $response = $this->get_response($qa);
+      
             $isselected = false;
             foreach ($this->order as $value => $ansid) {
                 if ($ansid == $answerid) {
@@ -224,7 +225,8 @@ class qtype_ubmultichoice_single_question extends qtype_ubmultichoice_base {
     }
 
     public function get_response(question_attempt $qa) {
-        return $qa->get_last_qt_var('answer', -1);
+                
+        return $qa->get_last_qt_var('answer',-1);
     }
 
     public function is_choice_selected($response, $value) {
@@ -338,7 +340,7 @@ class qtype_ubmultichoice_multi_question extends qtype_ubmultichoice_base {
     public function is_same_response(array $prevresponse, array $newresponse) {
         foreach ($this->order as $key => $notused) {
             $fieldname = $this->field($key);
-            if (!question_utils::arrays_same_at_key($prevresponse, $newresponse, $fieldname)) {
+            if (!question_utils::arrays_same_at_key_integer($prevresponse, $newresponse, $fieldname)) {
                 return false;
             }
         }
@@ -429,6 +431,7 @@ class qtype_ubmultichoice_multi_question extends qtype_ubmultichoice_base {
     }
 
     public function get_response(question_attempt $qa) {
+    
         return $qa->get_last_qt_data();
     }
 

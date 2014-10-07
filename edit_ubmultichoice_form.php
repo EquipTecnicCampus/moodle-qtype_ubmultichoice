@@ -153,6 +153,6 @@ class qtype_ubmultichoice_edit_form extends question_edit_form {
     }
 
     public function qtype() {
-        return 'multichoice';
+        return 'ubmultichoice';
     }
 }

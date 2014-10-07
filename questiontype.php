@@ -198,6 +198,63 @@ class qtype_ubmultichoice extends question_type {
         return $totalfraction / count($questiondata->options->answers);
     }
 
+    public function export_to_xml($question, qformat_xml $format, $extra = null) {
+        $output = '';
+
+        $output .= "    <single>" . $format->get_single($question->options->single) .
+                        "</single>\n";
+        $output .= "    <shuffleanswers>" .
+                $format->get_single($question->options->shuffleanswers) .
+                "</shuffleanswers>\n";
+        $output .= "    <answernumbering>" . $question->options->answernumbering .
+                "</answernumbering>\n";
+        $output .= $format->write_combined_feedback($question->options, $question->id, $question->contextid);
+        $output .= $format->write_answers($question->options->answers);
+
+        return $output;
+    }
+
+     public function import_from_xml($data, $question, qformat_xml $format, $extra=null) {
+        if (!isset($data['@']['type']) || $data['@']['type'] != 'ubmultichoice') {
+            return false;
+        }
+
+        // get common parts
+        $question = $format->import_headers($data);
+
+        // 'header' parts particular to multichoice
+        $question->qtype = 'ubmultichoice';
+        $single = $format->getpath($data, array('#', 'single', 0, '#'), 'true');
+        $question->single = $format->trans_single($single);
+        $shuffleanswers = $format->getpath($data,
+                array('#', 'shuffleanswers', 0, '#'), 'false');
+        $question->answernumbering = $format->getpath($data,
+                array('#', 'answernumbering', 0, '#'), 'abc');
+        $question->shuffleanswers = $format->trans_single($shuffleanswers);
+
+        // There was a time on the 1.8 branch when it could output an empty
+        // answernumbering tag, so fix up any found.
+        if (empty($question->answernumbering)) {
+            $question->answernumbering = 'abc';
+        }
+
+        // Run through the answers
+        $answers = $data['#']['answer'];
+        $acount = 0;
+        foreach ($answers as $answer) {
+            $ans = $format->import_answer($answer, true, $format->get_format($question->questiontextformat));
+            $question->answer[$acount] = $ans->answer;
+            $question->fraction[$acount] = $ans->fraction;
+            $question->feedback[$acount] = $ans->feedback;
+            ++$acount;
+        }
+
+        $format->import_combined_feedback($question, $data, true);
+        $format->import_hints($question, $data, true, false, $format->get_format($question->questiontextformat));
+
+        return $question;
+    }
+
     public function get_possible_responses($questiondata) {
         if ($questiondata->options->single) {
             $responses = array();
